@@ -42,8 +42,23 @@
 
 package main
 
+import (
+	"fmt"
+	"sync"
+)
+
+var wg sync.WaitGroup
+
 func get(ch chan int) {
 	flag := true
+	num := 0
+	wg.Add(1)
+	for flag {
+		_, flag = <-ch
+		<-ch
+		num++
+	}
+	fmt.Println("moved", num)
 
 }
 func main() {
@@ -53,9 +68,20 @@ func main() {
 		ch <- 1
 	}
 
+	cars := make(chan int, 10)
+
 	go func() {
-		for i := 0; i < 10; i++ {
-			get(ch)
+		for {
+			select {
+			case cars <- 1:
+				get(ch)
+				defer wg.Done()
+			case <-cars:
+				cars <- 1
+			}
+
 		}
 	}()
+
+	wg.Wait()
 }
